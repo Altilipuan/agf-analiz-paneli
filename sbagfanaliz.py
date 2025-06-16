@@ -21,8 +21,10 @@ for s in [x.strip() for x in saat_girdisi.split(",") if x.strip()]:
         st.warning(f"⚠️ Geçersiz saat formatı atlandı: {s}")
 
 agf_data_dict = {}
-progress_bar = st.progress(0, text="⏳ Lütfen bekleyiniz... Yükleniyor: %0")
+progress_bar = st.empty()
 last_analysis_container = st.empty()
+
+start = st.button("🔍 Verileri Çek ve Analiz Et")
 
 
 def fetch_agf(saat):
@@ -43,7 +45,7 @@ def fetch_agf(saat):
                     cell_text = cells[1].text.strip()
                     if "(" in cell_text and "%" in cell_text:
                         at_no = cell_text.split("(")[0].strip()
-                        agf_percent = cell_text.split("%")[-1].replace(")", "").replace(",", ".")
+                        agf_percent = cell_text.split("%")[1].replace(")", "").replace(",", ".")
                         current_data.append((at_no, float(agf_percent)))
 
             df = pd.DataFrame(current_data, columns=["At", saat])
@@ -104,14 +106,18 @@ def analyze_and_display():
             st.warning(f"Analiz hatası ({ayak}. ayak): {e}")
 
 
-# Otomatik şekilde saatleri kontrol et
-if agf_url and planlanan_cekimler:
-    now = datetime.utcnow() + timedelta(hours=3)
-    now_str = now.strftime("%H:%M")
-    if now_str in planlanan_cekimler:
-        fetch_agf(now_str)
-        planlanan_cekimler.remove(now_str)
-        analyze_and_display()
-
-    progress_percent = int((len(saat_girdisi.split(",")) - len(planlanan_cekimler)) / len(saat_girdisi.split(",")) * 100)
-    progress_bar.progress(progress_percent / 100.0, text=f"⏳ Lütfen bekleyiniz... Yükleniyor: %{progress_percent}")
+if start:
+    if agf_url and planlanan_cekimler:
+        saatler_sayisi = len(planlanan_cekimler)
+        for index, saat in enumerate(planlanan_cekimler[:]):
+            now = datetime.utcnow() + timedelta(hours=3)
+            now_str = now.strftime("%H:%M")
+            if now_str >= saat:
+                fetch_agf(saat)
+                planlanan_cekimler.remove(saat)
+                analyze_and_display()
+            percent = int(((index + 1) / saatler_sayisi) * 100)
+            progress_bar.progress(percent / 100.0, text=f"⏳ Lütfen bekleyiniz... Yükleniyor: %{percent}")
+        progress_bar.empty()
+    else:
+        st.warning("Lütfen geçerli bir link ve saat aralığı giriniz.")
